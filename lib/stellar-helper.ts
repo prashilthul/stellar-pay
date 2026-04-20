@@ -70,24 +70,29 @@ export class StellarHelper {
     xlm: string;
     assets: Array<{ code: string; issuer: string; balance: string }>;
   }> {
-    const account = await this.server.loadAccount(publicKey);
+    try {
+      const account = await this.server.loadAccount(publicKey);
 
-    const xlmBalance = account.balances.find(
-      (b) => b.asset_type === 'native'
-    );
+      const xlmBalance = account.balances.find(
+        (b) => b.asset_type === 'native'
+      );
 
-    const assets = account.balances
-      .filter((b) => b.asset_type !== 'native')
-      .map((b: any) => ({
-        code: b.asset_code,
-        issuer: b.asset_issuer,
-        balance: b.balance,
-      }));
+      const assets = account.balances
+        .filter((b) => b.asset_type !== 'native')
+        .map((b: any) => ({
+          code: b.asset_code,
+          issuer: b.asset_issuer,
+          balance: b.balance,
+        }));
 
-    return {
-      xlm: xlmBalance && 'balance' in xlmBalance ? xlmBalance.balance : '0',
-      assets,
-    };
+      return {
+        xlm: xlmBalance && 'balance' in xlmBalance ? xlmBalance.balance : '0',
+        assets,
+      };
+    } catch (error) {
+      console.error('Error fetching balance:', error);
+      throw new Error('Failed to fetch account balance');
+    }
   }
 
   async sendPayment(params: {
