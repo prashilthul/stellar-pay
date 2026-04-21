@@ -31,7 +31,8 @@ export default function WalletConnection({ onConnect, onDisconnect }: WalletConn
       onConnect(key);
     } catch (error: any) {
       console.error('Connection error:', error);
-      alert(`Failed to connect wallet:\n${error.message}`);
+      const errorMessage = error.message || 'Unknown error occurred';
+      alert(`Failed to connect wallet:\n${errorMessage}`);
     } finally {
       setLoading(false);
     }
