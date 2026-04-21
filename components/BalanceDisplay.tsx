@@ -28,7 +28,8 @@ export default function BalanceDisplay({ publicKey }: BalanceDisplayProps) {
         setBalance(result.xlm);
       } catch (err: any) {
         console.error('Error fetching balance:', err);
-        setError('Failed to fetch balance');
+        const errorMessage = err.message || 'Unable to fetch balance';
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
