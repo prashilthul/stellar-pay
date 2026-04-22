@@ -31,6 +31,8 @@ export default function PaymentForm({ publicKey, onSuccess }: PaymentFormProps) 
       newErrors.recipient = 'Recipient address is required';
     } else if (recipient.length !== 56 || !recipient.startsWith('G')) {
       newErrors.recipient = 'Invalid Stellar address (must start with G and be 56 characters)';
+    } else if (!/^[G][A-Z0-9]{55}$/.test(recipient)) {
+      newErrors.recipient = 'Invalid Stellar address format';
     }
 
     if (!amount.trim()) {
@@ -41,6 +43,8 @@ export default function PaymentForm({ publicKey, onSuccess }: PaymentFormProps) 
         newErrors.amount = 'Amount must be a positive number';
       } else if (numAmount < 0.0000001) {
         newErrors.amount = 'Amount is too small (minimum: 0.0000001 XLM)';
+      } else if (numAmount > 1000000) {
+        newErrors.amount = 'Amount is too large (maximum: 1,000,000 XLM)';
       }
     }
 
