@@ -92,9 +92,11 @@ export default function PaymentForm({ publicKey, onSuccess }: PaymentFormProps) 
       let errorMessage = 'Failed to send payment. ';
 
       if (error.message.includes('insufficient')) {
-        errorMessage += 'Insufficient balance.';
+        errorMessage += 'Insufficient balance. Please fund your wallet with testnet XLM.';
       } else if (error.message.includes('destination')) {
-        errorMessage += 'Invalid destination account.';
+        errorMessage += 'Invalid destination account. Please check the recipient address.';
+      } else if (error.message.includes('network')) {
+        errorMessage += 'Network error. Please check your connection and try again.';
       } else {
         errorMessage += error.message || 'Please try again.';
       }
