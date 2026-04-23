@@ -47,13 +47,13 @@ export default function Home() {
           />
 
           {isConnected && (
-            <>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <BalanceDisplay publicKey={publicKey} />
               <PaymentForm
                 publicKey={publicKey}
                 onSuccess={handlePaymentSuccess}
               />
-            </>
+            </div>
           )}
         </div>
 
