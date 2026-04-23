@@ -4,6 +4,7 @@ import { useState } from 'react';
 import WalletConnection from '@/components/WalletConnection';
 import BalanceDisplay from '@/components/BalanceDisplay';
 import PaymentForm from '@/components/PaymentForm';
+import TransactionHistory from '@/components/TransactionHistory';
 
 export default function Home() {
   const [publicKey, setPublicKey] = useState<string>('');
@@ -40,19 +41,24 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-6xl mx-auto space-y-8">
           <WalletConnection
             onConnect={handleConnect}
             onDisconnect={handleDisconnect}
           />
 
           {isConnected && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <BalanceDisplay publicKey={publicKey} />
-              <PaymentForm
-                publicKey={publicKey}
-                onSuccess={handlePaymentSuccess}
-              />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-8">
+                <BalanceDisplay publicKey={publicKey} />
+                <PaymentForm
+                  publicKey={publicKey}
+                  onSuccess={handlePaymentSuccess}
+                />
+              </div>
+              <div>
+                <TransactionHistory publicKey={publicKey} />
+              </div>
             </div>
           )}
         </div>

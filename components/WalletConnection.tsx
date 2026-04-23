@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { stellar } from '@/lib/stellar-helper';
 import { FaWallet, FaCopy, FaCheck } from 'react-icons/fa';
 import { MdLogout } from 'react-icons/md';
@@ -29,10 +29,22 @@ export default function WalletConnection({ onConnect, onDisconnect }: WalletConn
       setPublicKey(key);
       setIsConnected(true);
       onConnect(key);
+
+      // Store connection in localStorage for persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('stellar_wallet_connected', 'true');
+        localStorage.setItem('stellar_wallet_address', key);
+      }
     } catch (error: any) {
       console.error('Connection error:', error);
       const errorMessage = error.message || 'Unknown error occurred';
-      alert(`Failed to connect wallet:\n${errorMessage}`);
+
+      // Check if Freighter is installed
+      if (errorMessage.includes('not installed') || errorMessage.includes('not found')) {
+        alert('Freighter wallet is not installed. Please install it from https://www.freighter.app/');
+      } else {
+        alert(`Failed to connect wallet:\n${errorMessage}`);
+      }
     } finally {
       setLoading(false);
     }
@@ -43,7 +55,27 @@ export default function WalletConnection({ onConnect, onDisconnect }: WalletConn
     setPublicKey('');
     setIsConnected(false);
     onDisconnect();
+
+    // Clear localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('stellar_wallet_connected');
+      localStorage.removeItem('stellar_wallet_address');
+    }
   };
+
+  // Check for existing connection on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const wasConnected = localStorage.getItem('stellar_wallet_connected');
+      const savedAddress = localStorage.getItem('stellar_wallet_address');
+
+      if (wasConnected === 'true' && savedAddress) {
+        setPublicKey(savedAddress);
+        setIsConnected(true);
+        onConnect(savedAddress);
+      }
+    }
+  }, [onConnect]);
 
   const handleCopyAddress = async () => {
     await navigator.clipboard.writeText(publicKey);
