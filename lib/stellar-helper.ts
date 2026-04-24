@@ -101,42 +101,59 @@ export class StellarHelper {
     amount: string;
     memo?: string;
   }): Promise<{ hash: string; success: boolean }> {
-    const account = await this.server.loadAccount(params.from);
+    try {
+      const account = await this.server.loadAccount(params.from);
 
-    const transactionBuilder = new StellarSdk.TransactionBuilder(account, {
-      fee: StellarSdk.BASE_FEE,
-      networkPassphrase: this.networkPassphrase,
-    }).addOperation(
-      StellarSdk.Operation.payment({
-        destination: params.to,
-        asset: StellarSdk.Asset.native(),
-        amount: params.amount,
-      })
-    );
+      // Calculate fee based on current network conditions
+      const fee = await this.server.fetchBaseFee();
 
-    if (params.memo) {
-      transactionBuilder.addMemo(StellarSdk.Memo.text(params.memo));
+      const transactionBuilder = new StellarSdk.TransactionBuilder(account, {
+        fee: fee.toString(),
+        networkPassphrase: this.networkPassphrase,
+      }).addOperation(
+        StellarSdk.Operation.payment({
+          destination: params.to,
+          asset: StellarSdk.Asset.native(),
+          amount: params.amount,
+        })
+      );
+
+      if (params.memo) {
+        transactionBuilder.addMemo(StellarSdk.Memo.text(params.memo));
+      }
+
+      const transaction = transactionBuilder.setTimeout(180).build();
+
+      const { signedTxXdr } = await this.kit.signTransaction(transaction.toXDR(), {
+        networkPassphrase: this.networkPassphrase,
+      });
+
+      const transactionToSubmit = StellarSdk.TransactionBuilder.fromXDR(
+        signedTxXdr,
+        this.networkPassphrase
+      );
+
+      const result = await this.server.submitTransaction(
+        transactionToSubmit as StellarSdk.Transaction
+      );
+
+      return {
+        hash: result.hash,
+        success: result.successful,
+      };
+    } catch (error: any) {
+      console.error('Payment error:', error);
+
+      // Provide more specific error messages
+      if (error.response && error.response.data && error.response.data.extras) {
+        const extras = error.response.data.extras;
+        if (extras.result_codes) {
+          throw new Error(`Transaction failed: ${extras.result_codes.operations.join(', ')}`);
+        }
+      }
+
+      throw error;
     }
-
-    const transaction = transactionBuilder.setTimeout(180).build();
-
-    const { signedTxXdr } = await this.kit.signTransaction(transaction.toXDR(), {
-      networkPassphrase: this.networkPassphrase,
-    });
-
-    const transactionToSubmit = StellarSdk.TransactionBuilder.fromXDR(
-      signedTxXdr,
-      this.networkPassphrase
-    );
-
-    const result = await this.server.submitTransaction(
-      transactionToSubmit as StellarSdk.Transaction
-    );
-
-    return {
-      hash: result.hash,
-      success: result.successful,
-    };
   }
 
   getExplorerLink(hash: string, type: 'tx' | 'account' = 'tx'): string {
@@ -154,6 +171,37 @@ export class StellarHelper {
   disconnect() {
     this.publicKey = null;
     return true;
+  }
+
+  async getAccountInfo(publicKey: string): Promise<{
+    id: string;
+    sequence: string;
+    balances: any[];
+    signers: any[];
+    thresholds: any;
+  }> {
+    try {
+      const account = await this.server.loadAccount(publicKey);
+      return {
+        id: account.accountId(),
+        sequence: account.sequenceNumber(),
+        balances: account.balances,
+        signers: account.signers,
+        thresholds: account.thresholds,
+      };
+    } catch (error) {
+      console.error('Error fetching account info:', error);
+      throw new Error('Failed to fetch account information');
+    }
+  }
+
+  async estimateFee(): Promise<number> {
+    try {
+      return await this.server.fetchBaseFee();
+    } catch (error) {
+      console.error('Error estimating fee:', error);
+      return StellarSdk.BASE_FEE;
+    }
   }
 }
 
