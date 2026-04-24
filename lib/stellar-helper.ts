@@ -1,58 +1,67 @@
 /**
- * Stellar Helper - Blockchain Logic with Stellar Wallets Kit
+ * Stellar Helper - Blockchain Logic with Freighter API
  */
 
 import * as StellarSdk from '@stellar/stellar-sdk';
-import {
-  StellarWalletsKit,
-  WalletNetwork,
-  allowAllModules,
-  FREIGHTER_ID
-} from '@creit.tech/stellar-wallets-kit';
+import { signTransaction, setAllowed, getAddress } from '@stellar/freighter-api';
+
+export interface Balance {
+  xlm: string;
+  assets: Array<{ code: string; issuer: string; balance: string }>;
+}
+
+export interface TransactionResult {
+  hash: string;
+  success: boolean;
+  fee?: number;
+}
+
+export interface AccountInfo {
+  id: string;
+  sequence: string;
+  balances: any[];
+  signers: any[];
+  thresholds: any;
+}
 
 export class StellarHelper {
   private server: StellarSdk.Horizon.Server;
   private networkPassphrase: string;
-  private kit: StellarWalletsKit;
-  private network: WalletNetwork;
   private publicKey: string | null = null;
+  private readonly NETWORKS = {
+    testnet: {
+      horizon: 'https://horizon-testnet.stellar.org',
+      passphrase: 'Test SDF Network ; September 2015',
+      explorer: 'testnet'
+    },
+    mainnet: {
+      horizon: 'https://horizon.stellar.org',
+      passphrase: 'Public Global Stellar Network ; September 2015',
+      explorer: 'public'
+    }
+  };
 
   constructor(network: 'testnet' | 'mainnet' = 'testnet') {
-    this.server = new StellarSdk.Horizon.Server(
-      network === 'testnet'
-        ? 'https://horizon-testnet.stellar.org'
-        : 'https://horizon.stellar.org'
-    );
-    this.networkPassphrase =
-      network === 'testnet'
-        ? StellarSdk.Networks.TESTNET
-        : StellarSdk.Networks.PUBLIC;
-
-    this.network = network === 'testnet'
-      ? WalletNetwork.TESTNET
-      : WalletNetwork.PUBLIC;
-
-    this.kit = new StellarWalletsKit({
-      network: this.network,
-      selectedWalletId: FREIGHTER_ID,
-      modules: allowAllModules(),
-    });
+    const config = this.NETWORKS[network];
+    this.server = new StellarSdk.Horizon.Server(config.horizon);
+    this.networkPassphrase = config.passphrase;
   }
 
+  /**
+   * Check if Freighter wallet is installed
+   */
   isFreighterInstalled(): boolean {
-    return true;
+    if (typeof window === 'undefined') return false;
+    return !!(window as any).freighter;
   }
 
+  /**
+   * Connect to Stellar wallet
+   */
   async connectWallet(): Promise<string> {
     try {
-      await this.kit.openModal({
-        onWalletSelected: async (option) => {
-          console.log('Wallet selected:', option.id);
-          this.kit.setWallet(option.id);
-        }
-      });
-
-      const { address } = await this.kit.getAddress();
+      await setAllowed();
+      const { address } = await getAddress();
 
       if (!address) {
         throw new Error('Wallet connection failed');
@@ -66,10 +75,10 @@ export class StellarHelper {
     }
   }
 
-  async getBalance(publicKey: string): Promise<{
-    xlm: string;
-    assets: Array<{ code: string; issuer: string; balance: string }>;
-  }> {
+  /**
+   * Get account balance
+   */
+  async getBalance(publicKey: string): Promise<Balance> {
     try {
       const account = await this.server.loadAccount(publicKey);
 
@@ -95,12 +104,15 @@ export class StellarHelper {
     }
   }
 
+  /**
+   * Send payment transaction
+   */
   async sendPayment(params: {
     from: string;
     to: string;
     amount: string;
     memo?: string;
-  }): Promise<{ hash: string; success: boolean }> {
+  }): Promise<TransactionResult> {
     try {
       const account = await this.server.loadAccount(params.from);
 
@@ -124,8 +136,9 @@ export class StellarHelper {
 
       const transaction = transactionBuilder.setTimeout(180).build();
 
-      const { signedTxXdr } = await this.kit.signTransaction(transaction.toXDR(), {
+      const { signedTxXdr } = await signTransaction(transaction.toXDR(), {
         networkPassphrase: this.networkPassphrase,
+        address: params.from,
       });
 
       const transactionToSubmit = StellarSdk.TransactionBuilder.fromXDR(
@@ -140,6 +153,7 @@ export class StellarHelper {
       return {
         hash: result.hash,
         success: result.successful,
+        fee: parseInt(fee),
       };
     } catch (error: any) {
       console.error('Payment error:', error);
@@ -156,30 +170,10 @@ export class StellarHelper {
     }
   }
 
-  getExplorerLink(hash: string, type: 'tx' | 'account' = 'tx'): string {
-    const network = this.networkPassphrase === StellarSdk.Networks.TESTNET ? 'testnet' : 'public';
-    return `https://stellar.expert/explorer/${network}/${type}/${hash}`;
-  }
-
-  formatAddress(address: string, startChars: number = 4, endChars: number = 4): string {
-    if (address.length <= startChars + endChars) {
-      return address;
-    }
-    return `${address.slice(0, startChars)}...${address.slice(-endChars)}`;
-  }
-
-  disconnect() {
-    this.publicKey = null;
-    return true;
-  }
-
-  async getAccountInfo(publicKey: string): Promise<{
-    id: string;
-    sequence: string;
-    balances: any[];
-    signers: any[];
-    thresholds: any;
-  }> {
+  /**
+   * Get account information
+   */
+  async getAccountInfo(publicKey: string): Promise<AccountInfo> {
     try {
       const account = await this.server.loadAccount(publicKey);
       return {
@@ -195,6 +189,9 @@ export class StellarHelper {
     }
   }
 
+  /**
+   * Estimate current network fee
+   */
   async estimateFee(): Promise<number> {
     try {
       return await this.server.fetchBaseFee();
@@ -202,6 +199,91 @@ export class StellarHelper {
       console.error('Error estimating fee:', error);
       return StellarSdk.BASE_FEE;
     }
+  }
+
+  /**
+   * Get recent transactions
+   */
+  async getRecentTransactions(
+    publicKey: string,
+    limit: number = 10
+  ): Promise<Array<{
+    id: string;
+    type: string;
+    amount?: string;
+    asset?: string;
+    from?: string;
+    to?: string;
+    createdAt: string;
+    hash: string;
+  }>> {
+    try {
+      const payments = await this.server
+        .payments()
+        .forAccount(publicKey)
+        .order('desc')
+        .limit(limit)
+        .call();
+
+      return payments.records.map((payment: any) => ({
+        id: payment.id,
+        type: payment.type,
+        amount: payment.amount,
+        asset: payment.asset_type === 'native' ? 'XLM' : payment.asset_code,
+        from: payment.from,
+        to: payment.to,
+        createdAt: payment.created_at,
+        hash: payment.transaction_hash,
+      }));
+    } catch (error) {
+      console.error('Error fetching transactions:', error);
+      throw new Error('Failed to fetch transaction history');
+    }
+  }
+
+  /**
+   * Get explorer link for transaction or account
+   */
+  getExplorerLink(hash: string, type: 'tx' | 'account' = 'tx'): string {
+    const network = this.networkPassphrase === this.NETWORKS.testnet.passphrase ? 'testnet' : 'public';
+    return `https://stellar.expert/explorer/${network}/${type}/${hash}`;
+  }
+
+  /**
+   * Format address for display
+   */
+  formatAddress(address: string, startChars: number = 4, endChars: number = 4): string {
+    if (address.length <= startChars + endChars) {
+      return address;
+    }
+    return `${address.slice(0, startChars)}...${address.slice(-endChars)}`;
+  }
+
+  /**
+   * Validate Stellar address
+   */
+  isValidAddress(address: string): boolean {
+    try {
+      StellarSdk.StrKey.decodeEd25519PublicKey(address);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Disconnect wallet
+   */
+  disconnect(): boolean {
+    this.publicKey = null;
+    return true;
+  }
+
+  /**
+   * Get current network
+   */
+  getNetwork(): 'testnet' | 'mainnet' {
+    return this.networkPassphrase === this.NETWORKS.testnet.passphrase ? 'testnet' : 'mainnet';
   }
 }
 

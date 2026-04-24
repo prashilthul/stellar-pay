@@ -87,13 +87,13 @@ export default function TransactionHistory({ publicKey }: TransactionHistoryProp
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 border border-slate-700 shadow-xl">
+      <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
         <div className="flex items-center gap-3 mb-4">
-          <FaClock className="text-blue-400 text-2xl" />
-          <h2 className="text-xl font-bold text-white">Recent Transactions</h2>
+          <FaClock className="text-[var(--primary)] text-2xl" />
+          <h2 className="text-[24px] font-bold text-[var(--on-dark)]">Recent Transactions</h2>
         </div>
         <div className="flex items-center justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-400 border-r-transparent"></div>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-[var(--primary)] border-r-transparent"></div>
         </div>
       </div>
     );
@@ -101,13 +101,13 @@ export default function TransactionHistory({ publicKey }: TransactionHistoryProp
 
   if (error) {
     return (
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 border border-slate-700 shadow-xl">
+      <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
         <div className="flex items-center gap-3 mb-4">
-          <FaClock className="text-red-400 text-2xl" />
-          <h2 className="text-xl font-bold text-white">Recent Transactions</h2>
+          <FaClock className="text-[var(--accent-rose)] text-2xl" />
+          <h2 className="text-[24px] font-bold text-[var(--on-dark)]">Recent Transactions</h2>
         </div>
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-          <p className="text-red-400 text-sm">{error}</p>
+        <div className="bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-lg p-4">
+          <p className="text-[var(--accent-rose)] text-sm">{error}</p>
         </div>
       </div>
     );
@@ -115,48 +115,48 @@ export default function TransactionHistory({ publicKey }: TransactionHistoryProp
 
   if (transactions.length === 0) {
     return (
-      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 border border-slate-700 shadow-xl">
+      <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
         <div className="flex items-center gap-3 mb-4">
-          <FaClock className="text-blue-400 text-2xl" />
-          <h2 className="text-xl font-bold text-white">Recent Transactions</h2>
+          <FaClock className="text-[var(--primary)] text-2xl" />
+          <h2 className="text-[24px] font-bold text-[var(--on-dark)]">Recent Transactions</h2>
         </div>
         <div className="text-center py-8">
-          <p className="text-slate-400">No transactions yet</p>
-          <p className="text-slate-500 text-sm mt-2">Your transaction history will appear here</p>
+          <p className="text-[var(--muted)]">No transactions yet</p>
+          <p className="text-[var(--muted-soft)] text-sm mt-2">Your transaction history will appear here</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-8 border border-slate-700 shadow-xl">
+    <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
       <div className="flex items-center gap-3 mb-6">
-        <FaClock className="text-blue-400 text-2xl" />
-        <h2 className="text-xl font-bold text-white">Recent Transactions</h2>
+        <FaClock className="text-[var(--primary)] text-2xl" />
+        <h2 className="text-[24px] font-bold text-[var(--on-dark)]">Recent Transactions</h2>
       </div>
 
       <div className="space-y-3">
         {transactions.map((tx) => (
           <div
             key={tx.id}
-            className="bg-white/5 rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-colors"
+            className="bg-[var(--surface-soft)] rounded-xl p-4 border border-[var(--hairline)] hover:border-[var(--hairline-strong)] transition-colors"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${
-                  isOutgoing(tx) ? 'bg-red-500/20' : 'bg-green-500/20'
+                  isOutgoing(tx) ? 'bg-[var(--surface-elevated)]' : 'bg-[var(--surface-elevated)]'
                 }`}>
                   {isOutgoing(tx) ? (
-                    <FaArrowUp className="text-red-400" />
+                    <FaArrowUp className="text-[var(--accent-rose)]" />
                   ) : (
-                    <FaArrowDown className="text-green-400" />
+                    <FaArrowDown className="text-[var(--accent-emerald)]" />
                   )}
                 </div>
                 <div>
-                  <p className="text-white font-medium">
+                  <p className="text-[var(--on-dark)] font-medium">
                     {isOutgoing(tx) ? 'Sent' : 'Received'} {tx.amount} {tx.asset}
                   </p>
-                  <p className="text-slate-400 text-sm">
+                  <p className="text-[var(--muted)] text-sm">
                     {formatDate(tx.createdAt)}
                   </p>
                 </div>
@@ -165,7 +165,7 @@ export default function TransactionHistory({ publicKey }: TransactionHistoryProp
                 href={stellar.getExplorerLink(tx.hash, 'tx')}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 transition-colors"
+                className="text-[var(--primary)] hover:text-[var(--primary-active)] transition-colors"
                 title="View on Stellar Expert"
               >
                 <FaExternalLinkAlt />
@@ -180,7 +180,7 @@ export default function TransactionHistory({ publicKey }: TransactionHistoryProp
           href={stellar.getExplorerLink(publicKey, 'account')}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-400 hover:text-blue-300 text-sm underline"
+          className="text-[var(--primary)] hover:text-[var(--primary-active)] text-sm underline"
         >
           View all transactions on Stellar Expert →
         </a>
