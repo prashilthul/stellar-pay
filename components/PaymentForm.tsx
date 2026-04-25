@@ -1,32 +1,60 @@
-/**
- * PaymentForm Component
- *
- * Allows users to send XLM payments
- */
-
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { stellar } from '@/lib/stellar-helper';
-import { FaPaperPlane, FaCheckCircle } from 'react-icons/fa';
+import { FaPaperPlane, FaCheckCircle, FaExclamationTriangle, FaTerminal, FaChevronDown } from 'react-icons/fa';
 import AddressBook from './AddressBook';
 import MemoTemplates from './MemoTemplates';
 
 interface PaymentFormProps {
   publicKey: string;
   onSuccess?: () => void;
+  initialAddress?: string;
+  initialMemo?: string;
 }
 
-export default function PaymentForm({ publicKey, onSuccess }: PaymentFormProps) {
-  const [recipient, setRecipient] = useState('');
+export default function PaymentForm({ publicKey, onSuccess, initialAddress, initialMemo }: PaymentFormProps) {
+  const [recipient, setRecipient] = useState(initialAddress || '');
   const [amount, setAmount] = useState('');
-  const [memo, setMemo] = useState('');
+  const [memo, setMemo] = useState(initialMemo || '');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ recipient?: string; amount?: string }>({});
   const [alert, setAlert] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [txHash, setTxHash] = useState('');
   const [showAddressBook, setShowAddressBook] = useState(false);
   const [showMemoTemplates, setShowMemoTemplates] = useState(false);
+  const [recentAddresses, setRecentAddresses] = useState<any[]>([]);
+  const [recentMemos, setRecentMemos] = useState<any[]>([]);
+  const [availableBalance, setAvailableBalance] = useState<number>(0);
+
+  useEffect(() => {
+    if (initialAddress) setRecipient(initialAddress);
+    if (initialMemo) setMemo(initialMemo);
+  }, [initialAddress, initialMemo]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && publicKey) {
+      const fetchBalance = async () => {
+        try {
+          const bal = await stellar.getBalance(publicKey);
+          setAvailableBalance(parseFloat(bal.xlm));
+        } catch (e) {
+          console.error('Failed to fetch balance for validation:', e);
+        }
+      };
+      fetchBalance();
+      
+      try {
+        const savedAddresses = JSON.parse(localStorage.getItem('stellar_address_book') || '[]');
+        const savedMemos = JSON.parse(localStorage.getItem('stellar_memo_templates') || '[]');
+        setRecentAddresses(savedAddresses.slice(0, 3));
+        setRecentMemos(savedMemos.slice(0, 3));
+      } catch (e) {
+        console.error('Failed to load recent items:', e);
+      }
+    }
+  }, [publicKey]);
 
   const validateForm = (): boolean => {
     const newErrors: { recipient?: string; amount?: string } = {};
@@ -34,21 +62,17 @@ export default function PaymentForm({ publicKey, onSuccess }: PaymentFormProps) 
     if (!recipient.trim()) {
       newErrors.recipient = 'Recipient address is required';
     } else if (recipient.length !== 56 || !recipient.startsWith('G')) {
-      newErrors.recipient = 'Invalid Stellar address (must start with G and be 56 characters)';
-    } else if (!/^[G][A-Z0-9]{55}$/.test(recipient)) {
-      newErrors.recipient = 'Invalid Stellar address format';
+      newErrors.recipient = 'Invalid Stellar address structure';
     }
 
     if (!amount.trim()) {
-      newErrors.amount = 'Amount is required';
+      newErrors.amount = 'Asset amount is required';
     } else {
       const numAmount = parseFloat(amount);
       if (isNaN(numAmount) || numAmount <= 0) {
-        newErrors.amount = 'Amount must be a positive number';
-      } else if (numAmount < 0.0000001) {
-        newErrors.amount = 'Amount is too small (minimum: 0.0000001 XLM)';
-      } else if (numAmount > 1000000) {
-        newErrors.amount = 'Amount is too large (maximum: 1,000,000 XLM)';
+        newErrors.amount = 'Positive value required';
+      } else if (numAmount > availableBalance) {
+        newErrors.amount = `Insufficient funds (Available: ${availableBalance.toFixed(2)} XLM)`;
       }
     }
 
@@ -58,27 +82,12 @@ export default function PaymentForm({ publicKey, onSuccess }: PaymentFormProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       setLoading(true);
       setAlert(null);
       setTxHash('');
-
-      // Show confirmation dialog for large amounts
-      const numAmount = parseFloat(amount);
-      if (numAmount > 100) {
-        const confirmed = window.confirm(
-          `You are about to send ${numAmount} XLM. This is a large amount. Are you sure you want to proceed?`
-        );
-        if (!confirmed) {
-          setLoading(false);
-          return;
-        }
-      }
 
       const result = await stellar.sendPayment({
         from: publicKey,
@@ -91,7 +100,7 @@ export default function PaymentForm({ publicKey, onSuccess }: PaymentFormProps) 
         setTxHash(result.hash);
         setAlert({
           type: 'success',
-          message: `Payment sent successfully! 🎉`,
+          message: `Operation verified. Ledger updated.`,
         });
 
         setRecipient('');
@@ -100,28 +109,14 @@ export default function PaymentForm({ publicKey, onSuccess }: PaymentFormProps) 
         setErrors({});
 
         if (onSuccess) {
-          onSuccess();
+          setTimeout(onSuccess, 3000);
         }
       }
     } catch (error: any) {
       console.error('Payment error:', error);
-      let errorMessage = 'Failed to send payment. ';
-
-      if (error.message.includes('insufficient')) {
-        errorMessage += 'Insufficient balance. Please fund your wallet with testnet XLM.';
-      } else if (error.message.includes('destination')) {
-        errorMessage += 'Invalid destination account. Please check the recipient address.';
-      } else if (error.message.includes('network')) {
-        errorMessage += 'Network error. Please check your connection and try again.';
-      } else if (error.message.includes('Transaction failed')) {
-        errorMessage += error.message;
-      } else {
-        errorMessage += error.message || 'Please try again.';
-      }
-
       setAlert({
         type: 'error',
-        message: errorMessage,
+        message: error.message || 'Transmission failed. Verify network status.',
       });
     } finally {
       setLoading(false);
@@ -129,179 +124,223 @@ export default function PaymentForm({ publicKey, onSuccess }: PaymentFormProps) 
   };
 
   return (
-    <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
-      <h2 className="text-[32px] font-bold text-[var(--on-dark)] mb-6 flex items-center gap-2">
-        <FaPaperPlane className="text-[var(--primary)]" />
-        Send Payment
-      </h2>
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-surface-card border border-hairline rounded-lg p-10 relative overflow-hidden"
+    >
+      <div className="absolute top-0 left-0 w-1 h-full bg-primary/20" />
+      
+      <div className="flex items-center gap-3 mb-10">
+        <FaTerminal className="text-primary" size={14} />
+        <h2 className="text-[10px] font-bold uppercase tracking-[0.3em] text-on-dark">
+          Transaction Execution Unit
+        </h2>
+      </div>
 
-      {alert && (
-        <div className={`mb-4 p-4 rounded-lg border fade-in ${
-          alert.type === 'success'
-            ? 'bg-[var(--surface-soft)] border-[var(--accent-emerald)]'
-            : 'bg-[var(--surface-soft)] border-[var(--accent-rose)]'
-        }`}>
-          <p className={alert.type === 'success' ? 'text-[var(--accent-emerald)]' : 'text-[var(--accent-rose)]'}>
-            {alert.message}
-          </p>
-        </div>
-      )}
-
-      {txHash && (
-        <div className="mb-4 p-4 bg-[var(--surface-soft)] border border-[var(--accent-emerald)] rounded-lg fade-in">
-          <div className="flex items-start gap-3">
-            <FaCheckCircle className="text-[var(--accent-emerald)] text-xl flex-shrink-0 mt-1" />
-            <div className="flex-1">
-              <p className="text-[var(--accent-emerald)] font-semibold mb-2">Transaction Confirmed!</p>
-              <p className="text-[var(--muted)] text-sm mb-2">Transaction Hash:</p>
-              <p className="text-[var(--body)] text-xs font-mono break-all mb-3">{txHash}</p>
-              <a
-                href={stellar.getExplorerLink(txHash, 'tx')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[var(--primary)] hover:text-[var(--primary-active)] text-sm underline"
-              >
-                View on Stellar Expert →
-              </a>
+      <AnimatePresence mode="wait">
+        {alert && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className={`mb-8 p-6 border rounded overflow-hidden ${
+              alert.type === 'success'
+                ? 'bg-accent-emerald/5 border-accent-emerald/20'
+                : 'bg-accent-rose/5 border-accent-rose/20'
+            }`}
+          >
+            <div className="flex items-start gap-4">
+               {alert.type === 'success' ? (
+                 <FaCheckCircle className="text-accent-emerald mt-1 flex-shrink-0" />
+               ) : (
+                 <FaExclamationTriangle className="text-accent-rose mt-1 flex-shrink-0" />
+               )}
+               <div>
+                  <p className={`text-[10px] font-bold uppercase tracking-widest ${
+                    alert.type === 'success' ? 'text-accent-emerald' : 'text-accent-rose'
+                  }`}>
+                    {alert.type === 'success' ? 'Protocol Success' : 'Protocol Error'}
+                  </p>
+                  <p className="text-on-dark text-sm mt-1 font-medium leading-relaxed">{alert.message}</p>
+                  {txHash && (
+                    <a
+                      href={stellar.getExplorerLink(txHash, 'tx')}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block mt-4 text-[10px] font-bold text-primary uppercase tracking-widest hover:underline"
+                    >
+                      View Receipt →
+                    </a>
+                  )}
+               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-[var(--body)] text-sm font-medium">
-              Recipient Address
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="group">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted group-focus-within:text-primary transition-colors">
+              Destination Identity
             </label>
             <button
               type="button"
               onClick={() => setShowAddressBook(!showAddressBook)}
-              className="text-[var(--primary)] hover:text-[var(--primary-active)] text-sm"
+              className="text-primary hover:text-primary-active text-[10px] font-bold uppercase tracking-widest flex items-center gap-1"
             >
-              {showAddressBook ? 'Hide Address Book' : 'Address Book'}
+              Directory <FaChevronDown size={8} className={`transition-transform ${showAddressBook ? 'rotate-180' : ''}`} />
             </button>
           </div>
-          <input
-            type="text"
-            placeholder="GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-            value={recipient}
-            onChange={(e) => setRecipient(e.target.value)}
-            className={`w-full bg-[var(--surface-card)] border ${
-              errors.recipient ? 'border-[var(--accent-rose)]' : 'border-[var(--hairline)]'
-            } rounded-lg px-4 py-3 text-[var(--on-dark)] placeholder-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all`}
-          />
+          <div className="relative">
+             <input
+               type="text"
+               placeholder="G..."
+               value={recipient}
+               onChange={(e) => setRecipient(e.target.value)}
+               className={`w-full bg-canvas border ${
+                 errors.recipient ? 'border-accent-rose' : 'border-hairline group-focus-within:border-primary'
+               } rounded p-4 text-on-dark font-mono text-sm placeholder:text-muted-soft focus:outline-none transition-all`}
+             />
+          </div>
+          
+          {/* Quick Select Bubbles for Address */}
+          <div className="flex flex-wrap gap-2 mt-3">
+            {recentAddresses.map((addr) => (
+              <button
+                key={addr.id}
+                type="button"
+                onClick={() => setRecipient(addr.address)}
+                className="px-3 py-1.5 bg-surface-soft border border-hairline rounded-full text-[10px] font-bold text-body hover:border-primary hover:text-primary transition-all flex items-center gap-2"
+              >
+                <div className="w-1 h-1 rounded-full bg-primary" />
+                {addr.name}
+              </button>
+            ))}
+          </div>
+
           {errors.recipient && (
-            <p className="text-[var(--accent-rose)] text-xs mt-1 fade-in">{errors.recipient}</p>
-          )}
-          {recipient && !errors.recipient && (
-            <p className="text-[var(--accent-emerald)] text-xs mt-1 fade-in">
-              Valid Stellar address
-            </p>
+            <p className="text-accent-rose text-[10px] font-bold uppercase tracking-widest mt-2">{errors.recipient}</p>
           )}
         </div>
 
-        {showAddressBook && (
-          <AddressBook onSelectAddress={(address) => setRecipient(address)} />
-        )}
+        <AnimatePresence>
+          {showAddressBook && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+               <AddressBook onSelectAddress={(address) => { setRecipient(address); setShowAddressBook(false); }} />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <div>
-          <label className="block text-[var(--body)] text-sm font-medium mb-2">
-            Amount (XLM)
-          </label>
-          <div className="relative">
-            <input
-              type="number"
-              placeholder="0.00"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              className={`w-full bg-[var(--surface-card)] border ${
-                errors.amount ? 'border-[var(--accent-rose)]' : 'border-[var(--hairline)]'
-              } rounded-lg px-4 py-3 text-[var(--on-dark)] placeholder-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all`}
-            />
-            {amount && (
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <span className="text-[var(--muted)] text-sm">XLM</span>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="group">
+            <label className="block text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-3 group-focus-within:text-primary transition-colors">
+              Asset Quantity (XLM)
+            </label>
+            <div className="relative">
+              <input
+                type="number"
+                step="any"
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className={`w-full bg-canvas border ${
+                  errors.amount ? 'border-accent-rose' : 'border-hairline group-focus-within:border-primary'
+                } rounded p-4 text-on-dark font-mono text-base placeholder:text-muted-soft focus:outline-none transition-all`}
+              />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                 <span className="text-[10px] font-bold text-muted uppercase tracking-widest">Native</span>
               </div>
+            </div>
+            {errors.amount && (
+              <p className="text-accent-rose text-[10px] font-bold uppercase tracking-widest mt-2">{errors.amount}</p>
             )}
           </div>
-          {errors.amount && (
-            <p className="text-[var(--accent-rose)] text-xs mt-1 fade-in">{errors.amount}</p>
-          )}
-          {amount && !errors.amount && (
-            <>
-              <p className="text-[var(--muted)] text-xs mt-1 fade-in">
-                ≈ ${(parseFloat(amount) * 0.1).toFixed(2)} USD (estimated)
-              </p>
-              <p className="text-[var(--accent-emerald)] text-xs mt-1 fade-in">
-                ✓ Valid amount
-              </p>
-            </>
-          )}
-        </div>
 
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-[var(--body)] text-sm font-medium">
-              Memo (Optional)
-            </label>
-            <button
-              type="button"
-              onClick={() => setShowMemoTemplates(!showMemoTemplates)}
-              className="text-[var(--primary)] hover:text-[var(--primary-active)] text-sm"
-            >
-              {showMemoTemplates ? 'Hide Templates' : 'Memo Templates'}
-            </button>
+          <div className="group">
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted group-focus-within:text-primary transition-colors">
+                Transmission Memo
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowMemoTemplates(!showMemoTemplates)}
+                className="text-primary hover:text-primary-active text-[10px] font-bold uppercase tracking-widest flex items-center gap-1"
+              >
+                Log Entry <FaChevronDown size={8} className={`transition-transform ${showMemoTemplates ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
+            <input
+              type="text"
+              placeholder="System reference"
+              value={memo}
+              onChange={(e) => setMemo(e.target.value)}
+              maxLength={28}
+              className="w-full bg-canvas border border-hairline group-focus-within:border-primary rounded p-4 text-on-dark font-mono text-sm placeholder:text-muted-soft focus:outline-none transition-all"
+            />
+            
+            <div className="flex flex-wrap gap-2 mt-3">
+              {recentMemos.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setMemo(t.memo)}
+                  className="px-3 py-1.5 bg-surface-soft border border-hairline rounded-full text-[10px] font-bold text-body hover:border-primary hover:text-primary transition-all flex items-center gap-2"
+                >
+                  <FaTerminal size={8} className="text-primary" />
+                  {t.name}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex justify-end mt-2">
+               <span className="text-[9px] font-bold text-muted uppercase tracking-widest">{memo.length}/28 BYTE</span>
+            </div>
           </div>
-          <input
-            type="text"
-            placeholder="Payment for..."
-            value={memo}
-            onChange={(e) => setMemo(e.target.value)}
-            maxLength={28}
-            className="w-full bg-[var(--surface-card)] border border-[var(--hairline)] rounded-lg px-4 py-3 text-[var(--on-dark)] placeholder-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all"
-          />
-          <p className="text-[var(--muted-soft)] text-xs mt-1">
-            {memo.length}/28 characters
-          </p>
         </div>
 
-        {showMemoTemplates && (
-          <MemoTemplates onSelectMemo={(selectedMemo) => setMemo(selectedMemo)} />
-        )}
+        <AnimatePresence>
+          {showMemoTemplates && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+               <MemoTemplates onSelectMemo={(m) => { setMemo(m); setShowMemoTemplates(false); }} />
+            </motion.div>
+          )}
+        </AnimatePresence>
 
-        <div className="pt-2">
+        <div className="pt-8 border-t border-hairline">
           <button
             type="submit"
             disabled={loading || !recipient || !amount}
-            className="w-full btn-primary py-4 px-6 flex items-center justify-center gap-3 btn-hover"
+            className="w-full bg-primary text-on-primary font-bold py-5 rounded flex items-center justify-center gap-4 hover:bg-primary-active transition-all disabled:opacity-30 disabled:grayscale group"
           >
             {loading ? (
-              <>
-                <div className="h-5 w-5 animate-spin rounded-full border-4 border-solid border-[var(--on-primary)] border-r-transparent"></div>
-                Sending...
-              </>
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-solid border-on-primary border-r-transparent" />
             ) : (
               <>
-                <FaPaperPlane />
-                Send Payment
+                <span className="uppercase tracking-[0.2em] text-xs">Execute Transmission</span>
+                <FaPaperPlane className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
               </>
             )}
           </button>
+          <div className="mt-6 flex items-center justify-center gap-2">
+             <div className="w-1.5 h-1.5 rounded-full bg-accent-rose animate-pulse" />
+             <p className="text-muted-soft text-[9px] font-bold uppercase tracking-widest leading-relaxed">
+               Irreversible Operation. Verify parameters.
+             </p>
+          </div>
         </div>
       </form>
-
-      <div className="mt-4 p-3 bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-lg">
-        <p className="text-[var(--body)] text-xs">
-          Double-check the recipient address before sending. Transactions on the blockchain are irreversible!
-        </p>
-      </div>
-
-      <div className="mt-3 p-3 bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-lg">
-        <p className="text-[var(--body)] text-xs">
-          Tip: You can add a memo to help the recipient identify your payment.
-        </p>
-      </div>
-    </div>
+    </motion.div>
   );
 }

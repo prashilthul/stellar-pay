@@ -1,14 +1,9 @@
-/**
- * TransactionHistory Component
- *
- * Displays recent transactions for the connected wallet
- */
-
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { stellar } from '@/lib/stellar-helper';
-import { FaArrowUp, FaArrowDown, FaClock, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaArrowUp, FaArrowDown, FaClock, FaChevronRight } from 'react-icons/fa';
 import * as StellarSdk from '@stellar/stellar-sdk';
 
 interface Transaction {
@@ -24,9 +19,10 @@ interface Transaction {
 
 interface TransactionHistoryProps {
   publicKey: string;
+  limit?: number;
 }
 
-export default function TransactionHistory({ publicKey }: TransactionHistoryProps) {
+export default function TransactionHistory({ publicKey, limit = 10 }: TransactionHistoryProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -36,16 +32,12 @@ export default function TransactionHistory({ publicKey }: TransactionHistoryProp
       try {
         setLoading(true);
         setError(null);
-
-        // Create a temporary server instance for fetching transactions
         const server = new StellarSdk.Horizon.Server('https://horizon-testnet.stellar.org');
-
-        // Get recent transactions
         const payments = await server
           .payments()
           .forAccount(publicKey)
           .order('desc')
-          .limit(10)
+          .limit(limit)
           .call();
 
         const txData = payments.records.map((payment: any) => ({
@@ -71,7 +63,7 @@ export default function TransactionHistory({ publicKey }: TransactionHistoryProp
     if (publicKey) {
       fetchTransactions();
     }
-  }, [publicKey]);
+  }, [publicKey, limit]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -83,108 +75,93 @@ export default function TransactionHistory({ publicKey }: TransactionHistoryProp
     });
   };
 
-  const isOutgoing = (tx: Transaction) => tx.from === publicKey;
+  const isOutgoing = (tx: Transaction) => tx.from === publicKey && tx.to !== publicKey;
+  const isIncoming = (tx: Transaction) => tx.to === publicKey && tx.from !== publicKey;
+  const isSelf = (tx: Transaction) => tx.from === publicKey && tx.to === publicKey;
 
   if (loading) {
     return (
-      <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
-        <div className="flex items-center gap-3 mb-4">
-          <FaClock className="text-[var(--primary)] text-2xl" />
-          <h2 className="text-[24px] font-bold text-[var(--on-dark)]">Recent Transactions</h2>
-        </div>
-        <div className="flex items-center justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-[var(--primary)] border-r-transparent"></div>
-        </div>
+      <div className="space-y-4">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="h-16 bg-surface-soft border border-hairline rounded animate-pulse w-full"></div>
+        ))}
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
-        <div className="flex items-center gap-3 mb-4">
-          <FaClock className="text-[var(--accent-rose)] text-2xl" />
-          <h2 className="text-[24px] font-bold text-[var(--on-dark)]">Recent Transactions</h2>
-        </div>
-        <div className="bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-lg p-4">
-          <p className="text-[var(--accent-rose)] text-sm">{error}</p>
-        </div>
+      <div className="text-center py-10 bg-accent-rose/5 border border-accent-rose/20 rounded">
+        <p className="text-accent-rose text-[10px] font-bold uppercase tracking-widest">{error}</p>
       </div>
     );
   }
 
   if (transactions.length === 0) {
     return (
-      <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
-        <div className="flex items-center gap-3 mb-4">
-          <FaClock className="text-[var(--primary)] text-2xl" />
-          <h2 className="text-[24px] font-bold text-[var(--on-dark)]">Recent Transactions</h2>
-        </div>
-        <div className="text-center py-8">
-          <p className="text-[var(--muted)]">No transactions yet</p>
-          <p className="text-[var(--muted-soft)] text-sm mt-2">Your transaction history will appear here</p>
-        </div>
+      <div className="text-center py-12 border border-dashed border-hairline rounded">
+        <FaClock className="text-muted mx-auto mb-4" size={24} />
+        <p className="text-muted text-[10px] font-bold uppercase tracking-widest">No activity found in ledger</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
-      <div className="flex items-center gap-3 mb-6">
-        <FaClock className="text-[var(--primary)] text-2xl" />
-        <h2 className="text-[24px] font-bold text-[var(--on-dark)]">Recent Transactions</h2>
-      </div>
-
-      <div className="space-y-3">
-        {transactions.map((tx) => (
-          <div
-            key={tx.id}
-            className="bg-[var(--surface-soft)] rounded-xl p-4 border border-[var(--hairline)] hover:border-[var(--hairline-strong)] transition-colors"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${
-                  isOutgoing(tx) ? 'bg-[var(--surface-elevated)]' : 'bg-[var(--surface-elevated)]'
-                }`}>
-                  {isOutgoing(tx) ? (
-                    <FaArrowUp className="text-[var(--accent-rose)]" />
-                  ) : (
-                    <FaArrowDown className="text-[var(--accent-emerald)]" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-[var(--on-dark)] font-medium">
-                    {isOutgoing(tx) ? 'Sent' : 'Received'} {tx.amount} {tx.asset}
-                  </p>
-                  <p className="text-[var(--muted)] text-sm">
-                    {formatDate(tx.createdAt)}
-                  </p>
-                </div>
-              </div>
-              <a
-                href={stellar.getExplorerLink(tx.hash, 'tx')}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[var(--primary)] hover:text-[var(--primary-active)] transition-colors"
-                title="View on Stellar Expert"
-              >
-                <FaExternalLinkAlt />
-              </a>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4 text-center">
-        <a
-          href={stellar.getExplorerLink(publicKey, 'account')}
+    <div className="space-y-2">
+      {transactions.map((tx, idx) => (
+        <motion.a
+          key={tx.id}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: idx * 0.05 }}
+          href={stellar.getExplorerLink(tx.hash, 'tx')}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[var(--primary)] hover:text-[var(--primary-active)] text-sm underline"
+          className="flex items-center justify-between p-4 bg-canvas border border-hairline hover:border-primary/40 rounded transition-all group"
         >
-          View all transactions on Stellar Expert →
-        </a>
-      </div>
+          <div className="flex items-center gap-4">
+            <div className={`w-8 h-8 rounded flex items-center justify-center transition-colors ${
+              isSelf(tx) ? 'bg-primary/10 group-hover:bg-primary/20' :
+              isOutgoing(tx) ? 'bg-accent-rose/10 group-hover:bg-accent-rose/20' : 
+              'bg-accent-emerald/10 group-hover:bg-accent-emerald/20'
+            }`}>
+              {isSelf(tx) ? (
+                <FaArrowDown className="text-primary rotate-45" size={12} />
+              ) : isOutgoing(tx) ? (
+                <FaArrowUp className="text-accent-rose" size={12} />
+              ) : (
+                <FaArrowDown className="text-accent-emerald" size={12} />
+              )}
+            </div>
+            
+            <div>
+              <div className="flex items-center gap-2">
+                <span className={`font-bold text-xs tracking-tight italic ${
+                  isSelf(tx) ? 'text-primary' : isOutgoing(tx) ? 'text-on-dark' : 'text-accent-emerald'
+                }`}>
+                  {isSelf(tx) ? 'INTERNAL' : isOutgoing(tx) ? 'DEBIT' : 'CREDIT'}
+                </span>
+                <span className={`font-mono text-xs font-bold ${
+                  isSelf(tx) ? 'text-primary' : isOutgoing(tx) ? 'text-on-dark' : 'text-accent-emerald'
+                }`}>
+                  {isSelf(tx) ? '' : isOutgoing(tx) ? '-' : '+'}{tx.amount} {tx.asset}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-muted-soft text-[9px] font-bold uppercase tracking-widest">
+                  {formatDate(tx.createdAt)}
+                </p>
+                <div className="w-1 h-1 rounded-full bg-hairline"></div>
+                <p className="text-muted-soft text-[9px] font-mono">
+                  {isSelf(tx) ? 'Self-Transfer' : stellar.formatAddress(isOutgoing(tx) ? (tx.to || '') : (tx.from || ''), 6, 6)}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <FaChevronRight className="text-muted group-hover:text-primary group-hover:translate-x-1 transition-all" size={10} />
+        </motion.a>
+      ))}
     </div>
   );
 }

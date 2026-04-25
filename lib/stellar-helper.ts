@@ -48,30 +48,55 @@ export class StellarHelper {
   }
 
   /**
-   * Check if Freighter wallet is installed
+   * Check if Freighter wallet is installed and available
    */
-  isFreighterInstalled(): boolean {
+  async isFreighterInstalled(): Promise<boolean> {
     if (typeof window === 'undefined') return false;
-    return !!(window as any).freighter;
+    
+    // The @stellar/freighter-api might be more reliable
+    // We check both the window object and the API's isConnected helper
+    try {
+      const { isConnected } = await import('@stellar/freighter-api');
+      const connected = await isConnected();
+      return !!connected;
+    } catch (e) {
+      return !!(window as any).freighter;
+    }
   }
 
   /**
    * Connect to Stellar wallet
    */
   async connectWallet(): Promise<string> {
-    try {
-      await setAllowed();
-      const { address } = await getAddress();
+    if (typeof window === 'undefined') {
+      throw new Error('Wallet can only be connected in the browser');
+    }
 
+    const installed = await this.isFreighterInstalled();
+    if (!installed) {
+      throw new Error('Freighter wallet not found. Please install the extension from the Chrome Web Store.');
+    }
+
+    try {
+      // First check if we can access the API
+      const isAllowed = await setAllowed();
+      if (!isAllowed) {
+        throw new Error('Access to Freighter was denied by the user.');
+      }
+
+      const { address } = await getAddress();
       if (!address) {
-        throw new Error('Wallet connection failed');
+        throw new Error('No account found in Freighter. Please create or import an account.');
       }
 
       this.publicKey = address;
       return address;
     } catch (error: any) {
       console.error('Wallet connection error:', error);
-      throw new Error('Wallet connection failed: ' + error.message);
+      if (error.message.includes('User denied')) {
+        throw new Error('Connection request was rejected.');
+      }
+      throw new Error(error.message || 'Wallet connection failed');
     }
   }
 

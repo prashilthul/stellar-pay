@@ -1,14 +1,9 @@
-/**
- * BalanceDisplay Component
- *
- * Displays the connected wallet's XLM balance
- */
-
 'use client';
 
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { stellar } from '@/lib/stellar-helper';
-import { FaWallet, FaCoins } from 'react-icons/fa';
+import { FaCoins, FaExternalLinkAlt, FaFaucet } from 'react-icons/fa';
 
 interface BalanceDisplayProps {
   publicKey: string;
@@ -28,8 +23,7 @@ export default function BalanceDisplay({ publicKey }: BalanceDisplayProps) {
         setBalance(result.xlm);
       } catch (err: any) {
         console.error('Error fetching balance:', err);
-        const errorMessage = err.message || 'Unable to fetch balance';
-        setError(errorMessage);
+        setError(err.message || 'Unable to fetch balance');
       } finally {
         setLoading(false);
       }
@@ -42,82 +36,80 @@ export default function BalanceDisplay({ publicKey }: BalanceDisplayProps) {
 
   if (loading) {
     return (
-      <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
-        <div className="flex items-center gap-3 mb-4">
-          <FaWallet className="text-[var(--primary)] text-2xl" />
-          <h2 className="text-[24px] font-bold text-[var(--on-dark)]">Balance</h2>
-        </div>
-        <div className="flex items-center justify-center py-8">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-solid border-[var(--primary)] border-r-transparent"></div>
-        </div>
+      <div className="bg-surface-card border border-hairline rounded-lg p-10 animate-pulse">
+        <div className="w-24 h-4 bg-hairline rounded mb-8" />
+        <div className="w-48 h-12 bg-hairline rounded mb-4" />
+        <div className="w-32 h-4 bg-hairline rounded" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
-        <div className="flex items-center gap-3 mb-4">
-          <FaWallet className="text-[var(--accent-rose)] text-2xl" />
-          <h2 className="text-[24px] font-bold text-[var(--on-dark)]">Balance</h2>
-        </div>
-        <div className="bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-lg p-4">
-          <p className="text-[var(--accent-rose)] text-sm">{error}</p>
-        </div>
+      <div className="bg-surface-card border border-hairline rounded-lg p-10">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent-rose mb-4">Balance Error</h3>
+        <p className="text-on-dark text-sm font-medium">{error}</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-8 fade-in">
-      <div className="flex items-center gap-3 mb-4">
-        <FaCoins className="text-[var(--primary)] text-2xl" />
-        <h2 className="text-[24px] font-bold text-[var(--on-dark)]">Your Balance</h2>
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-surface-card border border-hairline rounded-lg p-10 relative overflow-hidden group"
+    >
+      <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
+        <FaCoins size={80} />
       </div>
-
-      <div className="bg-[var(--surface-soft)] rounded-xl p-6 border border-[var(--hairline)] pulse-glow">
-        <div className="flex items-baseline gap-2">
-          <span className="stat-display">
-            {parseFloat(balance).toFixed(2)}
-          </span>
-          <span className="text-[18px] text-[var(--body)]">XLM</span>
+      
+      <div className="relative z-10">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted mb-8">Available Assets</h3>
+        
+        <div className="flex flex-col gap-2">
+          <div className="flex items-baseline gap-4">
+            <span className="text-6xl md:text-7xl font-bold tracking-tighter text-primary italic">
+              {parseFloat(balance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </span>
+            <span className="text-xl font-black text-on-dark italic tracking-tighter">XLM</span>
+          </div>
+          <div className="flex items-center gap-2 mt-2">
+             <div className="px-2 py-1 bg-surface-soft border border-hairline rounded text-[10px] font-bold text-muted uppercase tracking-widest">
+               Native Asset
+             </div>
+             <div className="text-muted-soft text-sm font-medium">
+               ≈ ${(parseFloat(balance) * 0.1).toLocaleString()} USD
+             </div>
+          </div>
         </div>
-        <p className="text-[var(--muted)] text-sm mt-2">
-          Stellar Lumens on Testnet
-        </p>
-        <div className="mt-3 pt-3 border-t border-[var(--hairline)]">
-          <p className="text-[var(--muted)] text-xs">
-            ≈ ${(parseFloat(balance) * 0.1).toFixed(2)} USD (estimated)
-          </p>
+
+        <div className="mt-12 pt-8 border-t border-hairline grid grid-cols-1 md:grid-cols-2 gap-4">
+          <a
+            href="https://stellarterm.com/testnet/xlm-native"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-4 bg-canvas border border-hairline rounded hover:border-primary transition-all group/link"
+          >
+            <div>
+               <p className="text-[10px] font-bold uppercase tracking-widest text-on-dark">StellarTerm Faucet</p>
+               <p className="text-muted-soft text-[10px] font-medium mt-1">Acquire Testnet XLM</p>
+            </div>
+            <FaFaucet className="text-muted group-hover/link:text-primary transition-colors" />
+          </a>
+          <a
+            href="https://laboratory.stellar.org/#account-creator?network=test"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-between p-4 bg-canvas border border-hairline rounded hover:border-primary transition-all group/link"
+          >
+            <div>
+               <p className="text-[10px] font-bold uppercase tracking-widest text-on-dark">SDF Laboratory</p>
+               <p className="text-muted-soft text-[10px] font-medium mt-1">Network Debugger</p>
+            </div>
+            <FaExternalLinkAlt className="text-muted group-hover/link:text-primary transition-colors" size={12} />
+          </a>
         </div>
       </div>
-
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <a
-          href="https://stellarterm.com/testnet/xlm-native"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="p-3 bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-lg text-center hover:border-[var(--hairline-strong)] transition-colors"
-        >
-          <p className="text-[var(--accent-emerald)] text-sm font-medium">Get Testnet XLM</p>
-          <p className="text-[var(--muted)] text-xs mt-1">StellarTerm Faucet</p>
-        </a>
-        <a
-          href="https://laboratory.stellar.org/#account-creator?network=test"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="p-3 bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-lg text-center hover:border-[var(--hairline-strong)] transition-colors"
-        >
-          <p className="text-[var(--accent-blue)] text-sm font-medium">Account Creator</p>
-          <p className="text-[var(--muted)] text-xs mt-1">Stellar Laboratory</p>
-        </a>
-      </div>
-
-      <div className="mt-4 p-3 bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-lg">
-        <p className="text-[var(--body)] text-xs">
-          Need more XLM? Use the faucets above to get free testnet XLM for development.
-        </p>
-      </div>
-    </div>
+    </motion.div>
   );
 }

@@ -1,13 +1,9 @@
-/**
- * AddressBook Component
- *
- * Manage saved addresses for quick access
- */
-
 'use client';
 
 import { useState, useEffect } from 'react';
-import { FaPlus, FaTrash, FaCopy, FaCheck } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaPlus, FaTrash, FaCopy, FaCheck, FaUserCircle, FaTimes } from 'react-icons/fa';
+import { stellar } from '@/lib/stellar-helper';
 
 interface Address {
   id: string;
@@ -33,193 +29,141 @@ export default function AddressBook({ onSelectAddress }: AddressBookProps) {
   }, []);
 
   const loadAddresses = () => {
-    try {
-      const saved = localStorage.getItem('stellar_address_book');
-      if (saved) {
-        setAddresses(JSON.parse(saved));
-      }
-    } catch (error) {
-      console.error('Error loading addresses:', error);
-    }
+    const saved = localStorage.getItem('stellar_address_book');
+    if (saved) setAddresses(JSON.parse(saved));
   };
 
   const saveAddresses = (updatedAddresses: Address[]) => {
-    try {
-      localStorage.setItem('stellar_address_book', JSON.stringify(updatedAddresses));
-      setAddresses(updatedAddresses);
-    } catch (error) {
-      console.error('Error saving addresses:', error);
-    }
+    localStorage.setItem('stellar_address_book', JSON.stringify(updatedAddresses));
+    setAddresses(updatedAddresses);
   };
 
   const handleAddAddress = () => {
     if (!newName.trim() || !newAddress.trim()) {
-      setError('Name and address are required');
+      setError('Required parameters missing');
       return;
     }
-
     if (newAddress.length !== 56 || !newAddress.startsWith('G')) {
-      setError('Invalid Stellar address');
+      setError('Invalid address structure');
       return;
     }
 
-    const newAddressEntry: Address = {
+    const newEntry: Address = {
       id: Date.now().toString(),
       name: newName.trim(),
       address: newAddress.trim(),
       createdAt: new Date().toISOString(),
     };
 
-    saveAddresses([...addresses, newAddressEntry]);
+    saveAddresses([...addresses, newEntry]);
     setNewName('');
     setNewAddress('');
     setShowAddForm(false);
     setError(null);
   };
 
-  const handleDeleteAddress = (id: string) => {
-    saveAddresses(addresses.filter(addr => addr.id !== id));
-  };
-
-  const handleCopyAddress = (address: string) => {
-    navigator.clipboard.writeText(address);
-    setCopied(address);
-    setTimeout(() => setCopied(null), 2000);
-  };
-
-  const handleSelectAddress = (address: string) => {
-    if (onSelectAddress) {
-      onSelectAddress(address);
-    }
-  };
-
   return (
-    <div className="bg-[var(--surface-card)] border border-[var(--hairline)] rounded-2xl p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-[18px] font-semibold text-[var(--on-dark)]">Address Book</h3>
+    <div className="bg-surface-card border border-hairline rounded-lg p-8 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-8">
+        <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted">Identity Registry</h3>
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="btn-primary px-4 py-2 flex items-center gap-2"
+          className="text-primary hover:text-primary-active text-[10px] font-bold uppercase tracking-widest flex items-center gap-2"
         >
-          <FaPlus />
-          Add Address
+          {showAddForm ? <FaTimes /> : <FaPlus />} {showAddForm ? 'Close' : 'Register New'}
         </button>
       </div>
 
-      {showAddForm && (
-        <div className="mb-6 p-4 bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-lg">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-[var(--body)] text-sm font-medium mb-2">
-                Name
-              </label>
-              <input
-                type="text"
-                placeholder="Friend, Business, etc."
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="w-full bg-[var(--surface-card)] border border-[var(--hairline)] rounded-lg px-4 py-3 text-[var(--on-dark)] placeholder-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-[var(--body)] text-sm font-medium mb-2">
-                Stellar Address
-              </label>
-              <input
-                type="text"
-                placeholder="GXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-                value={newAddress}
-                onChange={(e) => setNewAddress(e.target.value)}
-                className="w-full bg-[var(--surface-card)] border border-[var(--hairline)] rounded-lg px-4 py-3 text-[var(--on-dark)] placeholder-[var(--muted)] focus:outline-none focus:ring-2 focus:ring-[var(--primary)] transition-all"
-              />
-            </div>
-
-            {error && (
-              <p className="text-[var(--accent-rose)] text-sm">{error}</p>
-            )}
-
-            <div className="flex gap-2">
-              <button
+      <AnimatePresence>
+        {showAddForm && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-8 p-6 bg-canvas border border-hairline rounded overflow-hidden"
+          >
+            <div className="space-y-4">
+              <div>
+                <label className="text-[9px] font-bold uppercase tracking-widest text-muted-soft mb-2 block">Alias</label>
+                <input
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="w-full bg-surface-soft border border-hairline rounded px-3 py-2 text-xs text-on-dark focus:outline-none focus:border-primary transition-colors"
+                  placeholder="e.g. Primary Cold Wallet"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-bold uppercase tracking-widest text-muted-soft mb-2 block">Public Key</label>
+                <input
+                  type="text"
+                  value={newAddress}
+                  onChange={(e) => setNewAddress(e.target.value)}
+                  className="w-full bg-surface-soft border border-hairline rounded px-3 py-2 text-xs text-on-dark font-mono focus:outline-none focus:border-primary transition-colors"
+                  placeholder="G..."
+                />
+              </div>
+              {error && <p className="text-accent-rose text-[9px] font-bold uppercase">{error}</p>}
+              <button 
                 onClick={handleAddAddress}
-                className="btn-primary px-4 py-2"
+                className="w-full bg-primary text-on-primary text-[10px] font-bold uppercase tracking-widest py-3 rounded hover:bg-primary-active transition-colors"
               >
-                Save Address
-              </button>
-              <button
-                onClick={() => {
-                  setShowAddForm(false);
-                  setNewName('');
-                  setNewAddress('');
-                  setError(null);
-                }}
-                className="btn-secondary px-4 py-2"
-              >
-                Cancel
+                Commit to Registry
               </button>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {addresses.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-[var(--muted)]">No saved addresses yet</p>
-          <p className="text-[var(--muted-soft)] text-sm mt-1">
-            Add frequently used addresses for quick access
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {addresses.map((addr) => (
-            <div
-              key={addr.id}
-              className="bg-[var(--surface-soft)] border border-[var(--hairline)] rounded-lg p-4 hover:border-[var(--hairline-strong)] transition-colors"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[var(--on-dark)] font-medium mb-1">{addr.name}</p>
-                  <p className="text-[var(--muted)] text-xs font-mono break-all mb-2">
-                    {addr.address}
-                  </p>
-                  <p className="text-[var(--muted-soft)] text-xs">
-                    Added {new Date(addr.createdAt).toLocaleDateString()}
-                  </p>
+      <div className="space-y-3 flex-1 overflow-y-auto pr-2 custom-scrollbar">
+        {addresses.length === 0 ? (
+          <div className="text-center py-12 border border-dashed border-hairline rounded">
+            <p className="text-muted-soft text-[10px] font-bold uppercase tracking-widest">Registry Empty</p>
+          </div>
+        ) : (
+          addresses.map((addr) => (
+            <div key={addr.id} className="group bg-canvas border border-hairline rounded p-4 hover:border-primary/40 transition-all">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3 flex-1 min-w-0">
+                  <div className="mt-1">
+                    <FaUserCircle className="text-muted group-hover:text-primary transition-colors" size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-on-dark font-bold text-xs truncate italic">{addr.name}</p>
+                    <p className="text-muted-soft font-mono text-[10px] truncate mt-1">{addr.address}</p>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
+                <div className="flex items-center gap-3 ml-4">
                   {onSelectAddress && (
                     <button
-                      onClick={() => handleSelectAddress(addr.address)}
-                      className="text-[var(--primary)] hover:text-[var(--primary-active)] text-sm"
-                      title="Use this address"
+                      onClick={() => onSelectAddress(addr.address)}
+                      className="text-primary hover:text-primary-active text-[9px] font-bold uppercase tracking-widest"
                     >
                       Use
                     </button>
                   )}
                   <button
-                    onClick={() => handleCopyAddress(addr.address)}
-                    className="text-[var(--body)] hover:text-[var(--on-dark)] transition-colors"
-                    title="Copy address"
+                    onClick={() => {
+                      navigator.clipboard.writeText(addr.address);
+                      setCopied(addr.id);
+                      setTimeout(() => setCopied(null), 2000);
+                    }}
+                    className="text-muted-soft hover:text-on-dark transition-colors"
                   >
-                    {copied === addr.address ? (
-                      <FaCheck className="text-[var(--accent-emerald)]" />
-                    ) : (
-                      <FaCopy />
-                    )}
+                    {copied === addr.id ? <FaCheck className="text-accent-emerald" size={10} /> : <FaCopy size={10} />}
                   </button>
                   <button
-                    onClick={() => handleDeleteAddress(addr.id)}
-                    className="text-[var(--accent-rose)] hover:text-[var(--accent-rose)] transition-colors"
-                    title="Delete address"
+                    onClick={() => saveAddresses(addresses.filter(a => a.id !== addr.id))}
+                    className="text-muted-soft hover:text-accent-rose transition-colors"
                   >
-                    <FaTrash />
+                    <FaTrash size={10} />
                   </button>
                 </div>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </div>
   );
 }
