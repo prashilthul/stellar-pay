@@ -178,7 +178,7 @@ export class StellarHelper {
       return {
         hash: result.hash,
         success: result.successful,
-        fee: parseInt(fee),
+        fee: Number(fee),
       };
     } catch (error: any) {
       console.error('Payment error:', error);
@@ -222,7 +222,7 @@ export class StellarHelper {
       return await this.server.fetchBaseFee();
     } catch (error) {
       console.error('Error estimating fee:', error);
-      return StellarSdk.BASE_FEE;
+      return Number(StellarSdk.BASE_FEE);
     }
   }
 
