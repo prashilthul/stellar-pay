@@ -67,7 +67,7 @@ A modernized, high-performance Stellar payment terminal built for the Stellar Wh
 ### **Installation**
 1. Clone the repository:
    ```bash
-   git clone <repo-url>
+   git clone https://github.com/prashilthul/stellar-pay/
    cd stellar-payment-app
    ```
 2. Install dependencies:
