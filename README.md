@@ -1,108 +1,145 @@
-# Stellar Payment App - White Belt Challenge
+# stellar-pay
 
-A modernized, high-performance Stellar payment terminal built for the Stellar White Belt Challenge. This application provides a "ClickHouse" terminal-grade aesthetic with a focus on speed, visibility, and robust data flow.
-
----
-
-### **Project Status & Compliance**
-- **Challenge Level**: Level 1 (White Belt)
-- **Status**: Completed
-- **Submission Date**: April 27, 2026
-- **Last Refinement**: April 26, 2026
+A high-performance payment terminal and account management interface for the Stellar blockchain network. Built with Next.js (App Router), TypeScript, Tailwind CSS, Framer Motion, and the official Stellar Horizon SDK + Freighter wallet integration.
 
 ---
 
-## 🚀 Key Features
+## Overview
 
-- **High-Performance Terminal UI**: A high-contrast, terminal-grade aesthetic optimized for focus and speed.
-- **Wallet Orchestration**: Connect/disconnect Stellar wallets via the Freighter API.
-- **Real-Time Telemetry**: Live network monitoring showing current ledger, base fee, and latency metrics.
-- **Identity Registry**: A persistent address book to manage frequent recipient identities.
-- **Transmission Presets**: Save and load common memo templates for recurring transactions.
-- **Quick Select UX**: Instant 1-click selection for contacts and memos directly from the transmission unit.
-- **Safety Validations**: Real-time on-chain balance verification and "Insufficient Funds" prevention.
-- **Smart History**: Intelligent ledger audit that distinguishes between DEBIT, CREDIT, and INTERNAL self-transfers.
+stellar-pay is a specialized decentralized finance interface built for the Stellar White Belt Challenge. It connects to the Stellar Testnet (and Mainnet) via the Freighter wallet extension and provides real-time telemetry, address book registry, payment presets, balance verification, and on-chain transaction audits.
 
-## 📸 Technical Showcase
+---
 
-### **1. Dashboard (Telemetry & Protocol Overview)**
-*Real-time network status and available XLM balance display.*
+## Features
+
+- **Wallet Orchestration**: Connect, disconnect, and auto-detect Freighter wallet identity with state persistence.
+- **Horizon Network Telemetry**: Live network monitoring tracking the latest ledger sequence, base fee (stroops), and RPC latency.
+- **Address Book Registry**: Local identity book allowing saved recipient aliases with quick-select transfer triggers.
+- **Transmission Presets & Memo Templates**: Save and load reusable transaction memos and notes.
+- **Safety Validations**: Client-side and on-chain balance checks, account activation checks, and insufficient funds prevention.
+- **Smart History & Ledger Audit**: Real-time transaction history fetching from Horizon, automatically categorizing operations into DEBIT, CREDIT, and INTERNAL transfers.
+- **Block Explorer Integration**: Direct links to Stellar Expert for on-chain verification and transaction hash validation.
+
+---
+
+## Technical Showcase
+
+### Dashboard and Network Telemetry
+Live network status, ledger updates, and available XLM balance:
 ![Dashboard](./images/dashboard.png)
 
-### **2. Transmission Execution Unit (Payment Form)**
-*Streamlined payment form featuring "Quick Select" bubbles for contacts and memos.*
+### Transmission Execution Unit
+Payment interface with destination address validation and quick-select presets:
 ![Payment Form](./images/payment-form.png)
 
-### **3. Transaction Confirmation**
-*Success state feedback after a verified protocol execution.*
-![Transaction Success](./images/paymentconformation.png)
+### Transaction Confirmation
+Execution feedback displaying ledger inclusion and transaction hash:
+![Transaction Confirmation](./images/paymentconformation.png)
 
-### **4. Immutable Audit Log**
-*Detailed transaction history with intelligent labeling.*
+### Immutable Audit Log
+Transaction history ledger with debits, credits, and timestamps:
 ![Ledger Audit](./images/payment-logs.png)
 
-### **5. Block Explorer Verification**
-*On-chain verification of the transaction via Stellar Expert.*
+### Block Explorer Verification
+On-chain confirmation and ledger inspection via Stellar Expert:
 ![Block Explorer](./images/payment-blockexplorer.png)
 
 ---
 
-## 🛠️ Tech Stack
+## Architecture and Tech Stack
 
-- **Core**: [Next.js 14](https://nextjs.org/) (App Router)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **Animation**: [Framer Motion](https://www.framer.com/motion/)
-- **Blockchain**: [@stellar/stellar-sdk](https://github.com/stellar/js-stellar-sdk)
-- **Wallet API**: [@stellar/freighter-api](https://github.com/stellar/freighter)
-- **Typography**: Outfit & JetBrains Mono
-
----
-
-## 🚀 Getting Started
-
-### **Prerequisites**
-- Node.js 18.0+
-- [Freighter Wallet](https://www.freighter.app/) extension installed
-
-### **Installation**
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/prashilthul/stellar-pay/
-   cd stellar-payment-app
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Launch development environment:
-   ```bash
-   npm run dev
-   ```
-4. Access the terminal at `http://localhost:3000`.
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS v4
+- **Animations**: Framer Motion
+- **Blockchain Integration**:
+  - `@stellar/stellar-sdk` (Horizon client & TransactionBuilder)
+  - `@stellar/freighter-api` (Wallet authentication & signing)
+- **Icons**: React Icons
 
 ---
 
-## 📖 Operational Guide
+## Prerequisites
 
-1. **Connect Wallet**: Use the connection unit to authorize the Freighter extension on **Testnet**.
-2. **Fund Identity**: Use the "SDF Laboratory" or "StellarTerm Faucet" links to acquire testnet XLM.
-3. **Execute Transmission**:
-   - Enter a Destination Identity (G...).
-   - Use **Quick Select** bubbles to instantly populate from your saved registry.
-   - Enter the XLM amount (Safety validation will prevent exceeding your balance).
-   - Click **Execute Transmission** and sign the request in your wallet.
-4. **Audit**: Review the success message and click the explorer link to verify the ledger entry.
+- Node.js 18.18+ or later
+- npm, pnpm, or yarn
+- [Freighter Wallet](https://www.freighter.app/) browser extension configured for Stellar Testnet
 
 ---
 
-## 📝 Compliance Checklist (Level 1)
+## Getting Started
 
-- [x] **Wallet Setup**: Freighter integration on Stellar Testnet.
-- [x] **Wallet Connection**: Robust connect/disconnect logic with auto-reconnection.
-- [x] **Balance Handling**: Live fetch with USD conversion and error states.
-- [x] **Transaction Flow**: verified payment execution with success/failure feedback and hash display.
-- [x] **Documentation**: Clean README with screenshots and setup instructions.
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/prashilthul/stellar-pay.git
+cd stellar-pay
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Start development server
+
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:3000`.
+
+### 4. Build for production
+
+```bash
+npm run build
+npm start
+```
 
 ---
 
-**Developed for the Stellar White Belt Challenge.**
+## Operational Guide
+
+1. **Connect Wallet**: Click Connect Wallet to authenticate with the Freighter browser extension on Testnet.
+2. **Fund Testnet Account**: If using a newly generated testnet account, fund it via Friendbot or the SDF Laboratory faucet.
+3. **Send Payments**:
+   - Provide a valid Stellar public key (`G...`) or select an entry from your Address Book.
+   - Enter the XLM transfer amount and an optional text memo.
+   - Submit and sign the transaction popup in Freighter.
+4. **Inspect Transactions**: Review the transaction outcome and open the Stellar Expert link to view block confirmations.
+
+---
+
+## Project Structure
+
+```
+stellar-pay/
+├── app/
+│   ├── favicon.ico
+│   ├── globals.css           # Tailwind CSS imports and custom utility classes
+│   ├── layout.tsx            # Root layout with metadata and font configurations
+│   └── page.tsx              # Main dashboard terminal combining all units
+├── components/
+│   ├── AccountInfo.tsx       # Signers, thresholds, and sequence number panel
+│   ├── AddressBook.tsx       # Recipient alias manager with local persistence
+│   ├── BalanceDisplay.tsx    # Live XLM balance card and currency formatting
+│   ├── FeeEstimator.tsx      # Base fee calculation and network fee breakdown
+│   ├── MemoTemplates.tsx     # Reusable memo selector and custom preset manager
+│   ├── NetworkStatus.tsx     # Horizon RPC latency and ledger tracker
+│   ├── PaymentForm.tsx       # Main transaction composer with Freighter signing
+│   ├── QuickSend.tsx         # Fast transfer trigger component
+│   ├── TransactionHistory.tsx# Horizon ledger audit log
+│   └── WalletConnection.tsx  # Freighter connection modal and state toggle
+├── lib/
+│   └── stellar-helper.ts     # Horizon SDK wrapper, transaction builder, and network helpers
+├── images/                   # Documentation screenshots and UI showcases
+├── package.json
+└── tsconfig.json
+```
+
+---
+
+## License
+
+MIT License
